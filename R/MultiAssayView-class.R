@@ -1,3 +1,9 @@
+.buildMap <- function(element, elemName) {
+  S4Vectors::expand.grid(
+    rownames = Rle(rownames(element)),
+    colnames = Rle(colnames(element)),
+    assayname = Rle(elemName))
+}
 ### ==============================================
 ### MultiAssayView class
 ### ==============================================
@@ -20,10 +26,19 @@
 .MultiAssayView <- setClass("MultiAssayView",
          representation(
              subject = "environment",
+             # identifiers = "DataFrame"
              rowindex = "IntegerList",
-             colindex = "IntegerList", 
+             colindex = "IntegerList",
              assayindex = "integer"
          ))
+
+.getIdentifiers <- function(object) {
+  NamesList <- lapply(seq_along(Elist(object)), function(i, j, k) {
+    .buildMap(j[[i]], k[i])},
+    j = Elist(object),
+    k = names(Elist(object)))
+  return(do.call(rbind, NamesList))
+}
 
 .idxlist <- function(x) {
     nms <- names(x)
@@ -36,10 +51,11 @@
 #' @export MultiAssayView
 MultiAssayView <- function(subject) {
     stopifnot(inherits(subject, "MultiAssayExperiment"))
-    .MultiAssayView(subject=as.environment(list(subject=subject)),
-                    rowindex=.idxlist(rownames(subject)),
-                    colindex=.idxlist(colnames(subject)),
+    .MultiAssayView(subject = as.environment(list(subject = subject)),
+                    rowindex = .idxlist(rownames(subject)),
+                    colindex = .idxlist(colnames(subject)),
                     assayindex = seq_along(subject))
+                    # identifiers = .getIdentifiers(subject))
 }
 
 .subject <- function(x) {
