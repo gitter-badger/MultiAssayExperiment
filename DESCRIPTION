@@ -1,7 +1,7 @@
-Package: biocMultiAssay
+Package: MultiAssayExperiment
 Title: Create Classes and Functions for Managing Multiple Assays on Sets of
     Samples
-Version: 0.4.0
+Version: 0.7.0
 Author: MultiAssay SIG
 Description: Develop an integrative environment where multiple assays are
     managed and preprocessed for genomic data analysis.
@@ -15,11 +15,10 @@ Suggests:
     TxDb.Hsapiens.UCSC.hg19.knownGene,
     data.table,
     hgu133a.db,
-    reshape2,
     shinydashboard,
     testthat
 Depends:
-    R (>= 3.0.1)
+    R (>= 3.2.0)
 Imports:
     methods,
     GenomicRanges,
@@ -29,6 +28,7 @@ Imports:
     IRanges,
     Biobase
 Maintainer: Marcel Ramos <mramos09@gmail.com>
+biocViews: Infrastructure, DataRepresentation
 License: Artistic-2.0
 LazyData: true
 LazyLoad: yes
@@ -36,11 +36,11 @@ Collate:
     'API.R'
     'Elist-class.R'
     'MultiAssayExperiment-class.R'
+    'RangedRaggedAssay-class.R'
+    'MultiAssayExperiment-methods.R'
+    'MultiAssayExperiment-pkg.R'
     'MultiAssayExperiment.R'
     'MultiAssayView-class.R'
-    'RangedRaggedAssay-class.R'
-    'biocMultiAssay-methods.R'
-    'biocMultiAssay.R'
     'listToMap.R'
     'mapToList.R'
     'subset.R'

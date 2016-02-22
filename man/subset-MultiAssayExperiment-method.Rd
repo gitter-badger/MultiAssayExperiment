@@ -3,9 +3,7 @@
 \docType{methods}
 \name{subset,MultiAssayExperiment-method}
 \alias{subset,MultiAssayExperiment-method}
-\title{Subset MultiAssayExperiment object
-\code{subset} returns a subsetted \code{\linkS4class{MultiAssayExperiment}}
-object}
+\title{Subset MultiAssayExperiment object}
 \usage{
 \S4method{subset}{MultiAssayExperiment}(x, indicator, method = NULL,
   drop = TRUE, ...)
@@ -22,12 +20,15 @@ either by colnames, rownames, or assays}
 \item{drop}{logical (default FALSE) whether to coerce lowest possible
 dimension after subsetting}
 
-\item{...}{Additional arguments to pass to SubsetByOverlaps when subsetting
+\item{...}{Additional arguments to pass to
+\code{\link[IRanges]{subsetByOverlaps}} when subsetting
 by rownames}
 }
+\value{
+A subsetted \link{MultiAssayExperiment} class object
+}
 \description{
-Subset MultiAssayExperiment object
-\code{subset} returns a subsetted \code{\linkS4class{MultiAssayExperiment}}
-object
+The \code{subset} function allows for searching through colnames and
+rownames to obtain the requested subset of data or experiments (assays).
 }
 

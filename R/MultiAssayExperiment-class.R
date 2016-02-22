@@ -12,8 +12,8 @@
 #' (inherits from \code{GRangesList}), and \code{RangedVcfStack}. Create new
 #' \code{MultiAssayExperiment} instances with the eponymous constructor, 
 #' minimally with the argument \code{\linkS4class{Elist}}, potentially also
-#' with the arguments \code{pData} and \code{sampleMap}
-#' 
+#' with the arguments \code{pData} and \code{sampleMap}.
+#'
 #' @slot Elist A \code{\linkS4class{Elist}} class object for each assay dataset
 #' @slot pData A \code{DataFrame} of all clinical data available across
 #' experiments
@@ -21,7 +21,12 @@
 #' and participants
 #' @slot metadata Additional data describing the
 #' \code{\link{MultiAssayExperiment}} object
-#' @slot drops A metadata \code{list} of dropped information.
+#' @slot drops A metadata \code{list} of dropped information
+#' @return A \code{MultiAssayExperiment} object
+#' 
+#' @examples
+#' MultiAssayExperiment()
+#' 
 #' @exportClass MultiAssayExperiment
 #' @include Elist-class.R
 setClass("MultiAssayExperiment",
@@ -64,8 +69,8 @@ setClass("MultiAssayExperiment",
   errors <- character()
   SampMap <- sampleMap(object)
   lcheckdups <- S4Vectors::split(SampMap[["assay"]], SampMap[, "assayname"])
-  logchecks <- any(vapply(lcheckdups,
-                          function(x) any(duplicated(x)), logical(1)))
+  logchecks <- any(vapply(lcheckdups, function(x) as.logical(anyDuplicated(x)),
+                          logical(1L)))
   if (logchecks) {
     msg <- "All sample identifiers in the assays must be unique"
     errors <- c(errors, msg)
@@ -93,9 +98,9 @@ setClass("MultiAssayExperiment",
 
 ## All sample names in the Elist must be in the sampleMap
 .checkSampleNames <- function(object) {
-  if (!identical(sort(unname(unlist(colnames(object)))),
-                 sort(sampleMap(object)[, "assay"]))) {
-    return("samples in the Elist are not the same as samples in the sampleMap")
+  if (!.uniqueSortIdentical(unname(unlist(colnames(object))),
+                            sampleMap(object)[, "assay"])) {
+    return("samples in the 'Elist' and 'sampleMap' are not equal")
   }
   NULL
 }
@@ -170,7 +175,9 @@ setMethod("show", "MultiAssayExperiment", function(object) {
 #'
 #' @param x A \code{MultiAssayExperiment} object
 #' @return A \code{DataFrame} object of sample relationships across experiments
+#' @example inst/scripts/sampleMap-Ex.R
 setGeneric("sampleMap", function(x) standardGeneric("sampleMap"))
+
 #' @describeIn MultiAssayExperiment Access sampleMap slot from
 #' MultiAssayExperiment
 #' @exportMethod sampleMap
@@ -217,26 +224,40 @@ setMethod("names", "MultiAssayExperiment", function(x)
 #' @param x A \code{MultiAssayExperiment} object
 #' @param value A \code{DataFrame} object to replace the existing
 #' \code{sampleMap}
+#' @return A \code{sampleMap} with replacement values
 setGeneric("sampleMap<-", function(x, value) standardGeneric("sampleMap<-"))
+
 #' @exportMethod sampleMap<-
-#' @describeIn MultiAssayExperiment value: A \code{DataFrame} sampleMap 
+#' @describeIn MultiAssayExperiment value: A \code{DataFrame} sampleMap
 #' representation
-#' @param value A \code{DataFrame} or \code{Elist} object to replace the existing
+#' @param value A \code{DataFrame} or \code{Elist} object to replace the
+#' existing
 #' \code{sampleMap} or an \code{Elist} slot, respectively
 setReplaceMethod("sampleMap", c("MultiAssayExperiment", "DataFrame"),
                  function(x, value) {
                    slot(x, "sampleMap") <- value
                    return(x)
                  })
-#' Replace an \code{Elist} slot value with a given \code{\linkS4class{Elist}}
+
+#' Replace an \code{Elist} slot value with a given \code{Elist}
 #' class object
 #'
 #' @param x A \code{MultiAssayExperiment} class object
-#' @param value An \code{\linkS4class{Elist}} object to replace the existing
-#' \code{\linkS4class{Elist}} slot
+#' @param value An \code{Elist} object to replace the existing
+#' \code{Elist} slot
+#'
+#' @examples
+#' ## Load a MultiAssayExperiment
+#' example("MultiAssayExperiment")
+#' 
+#' ## Replace with an empty Elist
+#' Elist(myMultiAssayExperiment) <- Elist()
+#'
+#' @return A \code{Elist} class object
 setGeneric("Elist<-", function(x, value) standardGeneric("Elist<-"))
+
 #' @exportMethod Elist<-
-#' @describeIn MultiAssayExperiment value: An \linkS4class{Elist} 
+#' @describeIn MultiAssayExperiment value: An \code{Elist} 
 #' representation
 setReplaceMethod("Elist", c("MultiAssayExperiment", "Elist"),
                  function(x, value) {

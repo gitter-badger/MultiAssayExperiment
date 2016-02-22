@@ -20,9 +20,9 @@
 #'     retained for subsequent operations
 #' @slot assayindex An \code{integer} indexing assays of subject
 #'     retained for subsequent operations
+#' @return A \code{MultiAssayView} object
 #' @exportClass MultiAssayView
-#' @aliases MultiAssayView
-#' @importFrom IRanges CharacterList
+#' @name MultiAssayView-class
 .MultiAssayView <- setClass("MultiAssayView",
          representation(
              subject = "environment",
@@ -48,7 +48,22 @@
     stats::setNames(relist(idx, x), nms)
 }
 
+#' A parallel representation for manipulating a MultiAssayExperiment
+#' 
+#' The purpose of the \code{MultiAssayView} class is to provide a
+#' lightweight and memory efficient representation of a 
+#' \code{MultiAssayExperiment} class object.
+#' 
+#' @param subject A \code{MultiAssayExperiment} class object
+#' @return A \code{MultiAssayView} representation of a loaded
+#' \code{MultiAssayExperiment} object.
+#' 
+#' @examples 
+#' example("MultiAssayExperiment")
+#' MultiAssayView(myMultiAssayExperiment)
+#' 
 #' @export MultiAssayView
+#' @name MultiAssayView
 MultiAssayView <- function(subject) {
     stopifnot(inherits(subject, "MultiAssayExperiment"))
     .MultiAssayView(subject = as.environment(list(subject = subject)),
@@ -96,6 +111,17 @@ setReplaceMethod("colnames", c("MultiAssayView", "ANY"),
     x
 })
 
+#' @describeIn MultiAssayView Get a \code{character} vector of experiment names
+setMethod("names", "MultiAssayView", function(x)
+  names(getElement(x, "subject")[["subject"]])
+)
+
+#' @describeIn MultiAssayView Get the number of assays in the
+#' \code{MultiAssayExperiment} instance
+setMethod("length", "MultiAssayView", function(x)
+  length(getElement(x, "subject")[["subject"]])
+)
+
 .subset1 <- function(i, index, names)
     ## FIXME: below is +/- ok for typeof(i) == character only
     index[which(names %in% i)]
@@ -119,8 +145,10 @@ setMethod("[", c("MultiAssayView", "ANY", "ANY", "ANY"),
         colindex <- .subset1(j, colindex, colnames(x))
     assayindex <- .assayindex(x)
     if (!missing(k))
-        assayindex <- assayindex[k]
-    initialize(x, rowindex=rowindex, colindex=colindex, assayindex = assayindex)
+      assayindex <- assayindex[k]
+    initialize(x, rowindex = rowindex,
+               colindex = colindex,
+               assayindex = assayindex)
     ## FIXME: row/colnames should be updated to reflect subsets ?
 })
 
