@@ -1,27 +1,4 @@
-## Check class conforms to API
-.hasMethods <- function(object, my_fun) {
-  obj_cl <- class(object)
-  if (any(my_fun %in% c("[", "assay"))) {
-    if (inherits(object, "RangedSummarizedExperiment")) {
-      return(hasMethod(my_fun, signature = c(class(object), "missing")))
-    } else {
-      return(hasMethod(my_fun, signature = c(obj_cl, "ANY")))
-    }
-  }
-  return(hasMethod(my_fun, signature = obj_cl))
-}
-
-.createRownames <- function(object) {
-  if (inherits(object, "GRangesList")) {
-    u_obj <- unlist(object, use.names = FALSE)
-    names(u_obj) <- seq_len(length(u_obj))
-    object <- relist(u_obj, object)
-  } else if (inherits(object, "SummarizedExperiment")) {
-    rownames(object) <- seq_along(object)
-  }
-  return(object)
-}
-
+## Helper functions for check non-NULL rownames
 .getRowNamesErr <- function(object) {
   if (dim(object)[1] > 0 && is.null(rownames(object))) {
     msg <- paste(" rownames in", class(object), "are NULL")
@@ -38,13 +15,22 @@
   }
 }
 
-.PrepElements <- function(object) {
-  if (is.null(rownames(object))) {
-    object <- .createRownames(object)
+## Helper function for .PrepElements in Elist construction
+.createRownames <- function(object) {
+  if (inherits(object, "SummarizedExperiment")) {
+    rownames(object) <- seq_along(object)
   }
+  return(object)
+}
+
+## Ensure Elist elements are appropriate for the API and rownames are present
+.PrepElements <- function(object) {
   ## use is() to exclude RangedRaggedAssay
   if (inherits(object, "GRangesList") && !is(object, "RangedRaggedAssay")) {
     object <- RangedRaggedAssay(object)
+  }
+  if (is.null(rownames(object))) {
+    object <- .createRownames(object)
   }
   return(object)
 }
@@ -97,6 +83,7 @@ setMethod("Elist", "ANY", function(x) {
   }
   return(.Elist(objList))
 })
+
 #' @describeIn Elist Create an empty Elist for signature "missing"
 setMethod("Elist", "missing", function(x) {
   .Elist(S4Vectors::SimpleList(list()))
@@ -106,15 +93,15 @@ setMethod("Elist", "missing", function(x) {
 ### Validity 
 ###
 
+## Helper function for .checkMethodsTable
 .getMethErr <- function(object) {
-  obj_cl <- class(object)
-  supportedMethods <- c("colnames", "rownames", "[", "assay", "dim")
+  supportedMethods <- c("colnames", "rownames", "[", "dim")
   methErr <- which(!sapply(supportedMethods, function(x) {
-    .hasMethods(object, x)
+    hasMethod(f = x, signature = class(object))
   }))
   if (any(methErr)) {
     unsupported <- names(methErr)
-    msg <- paste0("class '", obj_cl,
+    msg <- paste0("class '", class(object),
                   "' does not have method(s): ",
                   paste(unsupported, collapse = ", "))
     return(msg)
@@ -122,6 +109,7 @@ setMethod("Elist", "missing", function(x) {
   NULL
 }
 
+## 1.i. Check that [, colnames, rownames and dim methods are possible
 .checkMethodsTable <- function(object) {
   errors <- character()
   for (i in seq_along(object)) {
@@ -137,6 +125,8 @@ setMethod("Elist", "missing", function(x) {
   }
 }
 
+## 1.ii. Check for null rownames and colnames for each element in the Elist
+## and duplicated element names
 .checkElistNames <- function(object) {
   errors <- character()
   for (i in seq_along(object)) {
@@ -149,7 +139,7 @@ setMethod("Elist", "missing", function(x) {
       errors <- c(errors, paste0("[", i, "] Element", colname_err))
     }
   }
-  if (any(duplicated(names(object)))) {
+  if (anyDuplicated(names(object))) {
     msg <- "Non-unique names provided"
     errors <- c(errors, msg)
   }
@@ -160,26 +150,12 @@ setMethod("Elist", "missing", function(x) {
   }
 }
 
-.checkElistDims <- function(object) {
-  emptyRows <- (vapply(object, function(g) {dim(g)[1]}, integer(1)) == 0L)
-  emptyCols <- (vapply(object, function(g) {dim(g)[2]}, integer(1)) == 0L)
-  newmat <- rbind(emptyRows, emptyCols)
-  emptyDims <- apply(newmat, 2, any)
-  if (any(emptyDims)) {
-    warning("Elist elements",
-            sprintf(" '%s' ", names(which(emptyDims))),
-            "have empty dimensions")
-  }
-}
-
 .validElist <- function(object) {
   if (length(object) != 0L) {
     c(.checkMethodsTable(object),
     .checkElistNames(object))
   }
 }
-
-## Make sure Elist is valid before checking all of the sample names
 
 S4Vectors::setValidity2("Elist", .validElist)
 
@@ -190,11 +166,11 @@ setMethod("show", "Elist", function(object) {
   elem_cl <- vapply(object, class, character(1))
   o_len <- length(object)
   o_names <- names(object)
-  sampdim <- vapply(object, FUN = function(obj) {
-    ncol(obj)
-  }, FUN.VALUE = integer(1))
   featdim <- vapply(object, FUN = function(obj) {
-    nrow(obj)
+    dim(obj)[1]
+  }, FUN.VALUE = integer(1))
+  sampdim <- vapply(object, FUN = function(obj) {
+    dim(obj)[2]
   }, FUN.VALUE = integer(1))
   cat(sprintf('"%s"', o_class),
       "class object of length",

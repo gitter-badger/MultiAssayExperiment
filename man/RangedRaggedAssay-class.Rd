@@ -8,6 +8,7 @@
 \alias{[,RangedRaggedAssay,GRanges-method}
 \alias{assay,RangedRaggedAssay,ANY-method}
 \alias{colnames,RangedRaggedAssay-method}
+\alias{colnames<-,RangedRaggedAssay,character-method}
 \alias{dim,RangedRaggedAssay-method}
 \alias{getHits,RangedRaggedAssay,character-method}
 \alias{ncol,RangedRaggedAssay-method}
@@ -29,6 +30,8 @@
 
 \S4method{colnames}{RangedRaggedAssay}(x)
 
+\S4method{colnames}{RangedRaggedAssay,character}(x) <- value
+
 \S4method{assay}{RangedRaggedAssay,ANY}(x)
 
 \S4method{getHits}{RangedRaggedAssay,character}(subject, query, ...)
@@ -45,6 +48,8 @@ type for selecting columns (\code{\link[GenomicRanges]{GRangesList}} method)}
 \item{...}{Any additional arguments passed on to subsetByOverlaps}
 
 \item{drop}{logical (default TRUE) whether to drop empty columns}
+
+\item{value}{A \code{character} vector representing column or sample names}
 
 \item{subject}{A \code{RangedRaggedAssay} class object}
 
@@ -76,15 +81,20 @@ names
 \item \code{nrow}: Get the row length of a
 \code{RangedRaggedAssay} class object
 
-\item \code{rownames}: Get feature names from a RangedRaggedAssay
+\item \code{rownames}: Get feature names from a
+\code{RangedRaggedAssay}
 
-\item \code{colnames}: Get sample names from a RangedRaggedAssay
+\item \code{colnames}: Get sample names from a
+\code{RangedRaggedAssay}
+
+\item \code{colnames<-}: value: A modified \code{RangedRaggedAssay}
+object
 
 \item \code{assay}: Get experiment metadata from a 
-RangedRaggedAssay
+\code{RangedRaggedAssay}
 
-\item \code{getHits}: Find matching features by character in a 
-RangedRaggedAssay
+\item \code{getHits}: Find matching features by \code{character}
+in a \code{RangedRaggedAssay}
 }}
 \seealso{
 \code{\link[IRanges]{findOverlaps-methods}}

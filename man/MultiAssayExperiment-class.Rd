@@ -13,6 +13,7 @@
 \alias{metadata,MultiAssayExperiment-method}
 \alias{names,MultiAssayExperiment-method}
 \alias{pData,MultiAssayExperiment-method}
+\alias{pData<-,MultiAssayExperiment,DataFrame-method}
 \alias{rownames,MultiAssayExperiment-method}
 \alias{sampleMap,MultiAssayExperiment-method}
 \alias{sampleMap<-,MultiAssayExperiment,DataFrame-method}
@@ -33,9 +34,11 @@
 
 \S4method{names}{MultiAssayExperiment}(x)
 
-\S4method{sampleMap}{MultiAssayExperiment,DataFrame}(x) <- value
+\S4method{sampleMap}{MultiAssayExperiment,DataFrame}(object) <- value
 
-\S4method{Elist}{MultiAssayExperiment,Elist}(x) <- value
+\S4method{Elist}{MultiAssayExperiment,Elist}(object) <- value
+
+\S4method{pData}{MultiAssayExperiment,DataFrame}(object) <- value
 
 \S4method{rownames}{MultiAssayExperiment}(x)
 
@@ -53,8 +56,7 @@
 \item{x}{A \code{MultiAssayExperiment} object for subsetting}
 
 \item{value}{A \code{DataFrame} or \code{Elist} object to replace the
-existing
-\code{sampleMap} or an \code{Elist} slot, respectively}
+existing \code{sampleMap}, \code{Elist}, or \code{pData} slot}
 
 \item{i}{Either a \code{character}, or \code{GRanges} object for subsetting
 by rows}
@@ -75,30 +77,33 @@ in the \code{Elist}}
 A \code{MultiAssayExperiment} object
 }
 \description{
-The \code{MultiAssayExperiment} class can be used to manage results of 
+The \code{MultiAssayExperiment} class can be used to manage results of
 diverse assays on a collection of specimen. Currently,  the class can handle
-assays that are organized instances of \code{RangedSummarizedExperiment}, 
-\code{ExpressionSet}, \code{matrix}, \code{RangedRaggedAssay} 
-(inherits from \code{GRangesList}), and \code{RangedVcfStack}. Create new
-\code{MultiAssayExperiment} instances with the eponymous constructor, 
-minimally with the argument \code{\linkS4class{Elist}}, potentially also
-with the arguments \code{pData} and \code{sampleMap}.
+assays that are organized instances of
+\code{\linkS4class{SummarizedExperiment}},
+\code{\linkS4class{ExpressionSet}},
+\code{matrix}, \code{\link{RangedRaggedAssay}}
+(inherits from \code{\linkS4class{GRangesList}}), and \code{RangedVcfStack}.
+Create new \code{MultiAssayExperiment} instances with the eponymous
+constructor, minimally with the argument \code{\link{Elist}}, potentially
+also with the arguments \code{pData} (see section below) and
+\code{\link{sampleMap}}.
 }
 \section{Methods (by generic)}{
 \itemize{
 \item \code{show}: Show method for a
 \code{MultiAssayExperiment}
 
-\item \code{sampleMap}: Access sampleMap slot from
+\item \code{sampleMap}: Access sampleMap slot from a
 MultiAssayExperiment
 
-\item \code{Elist}: Access Elist class from
+\item \code{Elist}: Access Elist class from a
 MultiAssayExperiment
 
-\item \code{pData}: Access pData slot from
+\item \code{pData}: Access pData slot from a
 MultiAssayExperiment
 
-\item \code{metadata}: Access metadata slot from
+\item \code{metadata}: Access metadata slot from a
 MultiAssayExperiment
 
 \item \code{length}: Get the length of Elist
@@ -108,27 +113,29 @@ MultiAssayExperiment
 \item \code{sampleMap<-}: value: A \code{DataFrame} sampleMap
 representation
 
-\item \code{Elist<-}: value: An \code{Elist} 
+\item \code{Elist<-}: value: An \code{Elist}
 representation
 
+\item \code{pData<-}: value: A \code{DataFrame} of specimen data
+
 \item \code{rownames}: Get all the rownames for a
-MultiAssayExperiment using \code{\link[IRanges]{CharacterList}}
+\code{MultiAssayExperiment} using a \code{\link[IRanges]{CharacterList}}
 
 \item \code{colnames}: Get all the colnames for a
-MultiAssayExperiment
+\code{MultiAssayExperiment}
 
 \item \code{assay}: Get the raw data from a
-MultiAssayExperiment as a list
+\code{MultiAssayExperiment} as a \code{list}
 
 \item \code{[}: Subset a \code{MultiAssayExperiment} object
 
-\item \code{isEmpty}: Logical value of empty
+\item \code{isEmpty}: A \code{logical} value indicating an empty
 \code{MultiAssayExperiment}
 }}
 \section{Slots}{
 
 \describe{
-\item{\code{Elist}}{A \code{\linkS4class{Elist}} class object for each assay dataset}
+\item{\code{Elist}}{A \code{\link{Elist}} class object for each assay dataset}
 
 \item{\code{pData}}{A \code{DataFrame} of all clinical data available across
 experiments}
@@ -137,10 +144,30 @@ experiments}
 and participants}
 
 \item{\code{metadata}}{Additional data describing the
-\code{\link{MultiAssayExperiment}} object}
+\code{MultiAssayExperiment} object}
 
 \item{\code{drops}}{A metadata \code{list} of dropped information}
 }}
+\section{pData}{
+
+The \code{pData} slot is a collection of primary specimen data valid across
+all experiments. This slot is strictly of class
+\code{\linkS4class{DataFrame}} but arguments for the constructor function
+allow arguments to be of class \code{data.frame} and subsequently coerced.
+}
+
+\section{Elist}{
+
+The \code{\link{Elist}} slot is designed to contain results from each
+experiment/assay. It contains a \link[S4Vectors]{SimpleList}.
+}
+
+\section{sampleMap}{
+
+The \code{\link{sampleMap}} contains a \code{DataFrame} of translatable
+identifiers of samples and participants or biological units. Standard column
+names of the sampleMap are "primary", "assay", and "assayname".
+}
 \examples{
 MultiAssayExperiment()
 

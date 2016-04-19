@@ -1,48 +1,4 @@
-### ==============================================
-### MultiAssayExperiment class
-### ----------------------------------------------
-
-#' An integrative MultiAssay class for experiment data
-#' 
-#' @description 
-#' The \code{MultiAssayExperiment} class can be used to manage results of 
-#' diverse assays on a collection of specimen. Currently,  the class can handle
-#' assays that are organized instances of \code{RangedSummarizedExperiment}, 
-#' \code{ExpressionSet}, \code{matrix}, \code{RangedRaggedAssay} 
-#' (inherits from \code{GRangesList}), and \code{RangedVcfStack}. Create new
-#' \code{MultiAssayExperiment} instances with the eponymous constructor, 
-#' minimally with the argument \code{\linkS4class{Elist}}, potentially also
-#' with the arguments \code{pData} and \code{sampleMap}.
-#'
-#' @slot Elist A \code{\linkS4class{Elist}} class object for each assay dataset
-#' @slot pData A \code{DataFrame} of all clinical data available across
-#' experiments
-#' @slot sampleMap A \code{DataFrame} of translatable identifiers of samples
-#' and participants
-#' @slot metadata Additional data describing the
-#' \code{\link{MultiAssayExperiment}} object
-#' @slot drops A metadata \code{list} of dropped information
-#' @return A \code{MultiAssayExperiment} object
-#' 
-#' @examples
-#' MultiAssayExperiment()
-#' 
-#' @exportClass MultiAssayExperiment
-#' @include Elist-class.R
-setClass("MultiAssayExperiment",
-         slots = list(
-           Elist = "Elist",
-           pData = "DataFrame", 
-           sampleMap = "DataFrame",
-           metadata = "ANY",
-           drops = "list"
-         )
-)
-
-##
-## Validity ---------------------------------
-##
-
+## Helper function for validity checks
 .uniqueSortIdentical <- function(charvec1, charvec2) {
   listInput <- list(charvec1, charvec2)
   listInput <- lapply(listInput, function(x) sort(unique(x)))
@@ -53,72 +9,144 @@ setClass("MultiAssayExperiment",
   return(all(charvec2 %in% charvec1))
 }
 
-## sampleMap is a DataFrame with unique sampleNames across assay
-.checkSampleMapNames <- function(object) {
-  errors <- character()
-  if (!(.allIn(rownames(pData(object)),
-               slot(sampleMap(object)[, "master"], "values")))) {
-    msg <- "All samples in the sampleMap must be in the pData"
-    errors <- c(errors, msg)
-  }
-  if (length(errors) == 0L) 
-    NULL else errors
-}
+### ==============================================
+### MultiAssayExperiment class
+### ----------------------------------------------
 
-.uniqueNamesInAssays <- function(object) {
-  errors <- character()
-  SampMap <- sampleMap(object)
-  lcheckdups <- S4Vectors::split(SampMap[["assay"]], SampMap[, "assayname"])
-  logchecks <- any(vapply(lcheckdups, function(x) as.logical(anyDuplicated(x)),
-                          logical(1L)))
-  if (logchecks) {
-    msg <- "All sample identifiers in the assays must be unique"
-    errors <- c(errors, msg)
-  }
-  if (length(errors) == 0L) 
-    NULL else errors
-}
+#' An integrative MultiAssay class for experiment data
+#'
+#' @description
+#' The \code{MultiAssayExperiment} class can be used to manage results of
+#' diverse assays on a collection of specimen. Currently,  the class can handle
+#' assays that are organized instances of
+#' \code{\linkS4class{SummarizedExperiment}},
+#' \code{\linkS4class{ExpressionSet}},
+#' \code{matrix}, \code{\link{RangedRaggedAssay}}
+#' (inherits from \code{\linkS4class{GRangesList}}), and \code{RangedVcfStack}.
+#' Create new \code{MultiAssayExperiment} instances with the eponymous
+#' constructor, minimally with the argument \code{\link{Elist}}, potentially
+#' also with the arguments \code{pData} (see section below) and
+#' \code{\link{sampleMap}}.
+#'
+#' @section pData:
+#' The \code{pData} slot is a collection of primary specimen data valid across
+#' all experiments. This slot is strictly of class
+#' \code{\linkS4class{DataFrame}} but arguments for the constructor function
+#' allow arguments to be of class \code{data.frame} and subsequently coerced.
+#'
+#' @section Elist:
+#' The \code{\link{Elist}} slot is designed to contain results from each
+#' experiment/assay. It contains a \link[S4Vectors]{SimpleList}.
+#'
+#' @section sampleMap:
+#' The \code{\link{sampleMap}} contains a \code{DataFrame} of translatable
+#' identifiers of samples and participants or biological units. Standard column
+#' names of the sampleMap are "primary", "assay", and "assayname".
+#'
+#' @slot Elist A \code{\link{Elist}} class object for each assay dataset
+#' @slot pData A \code{DataFrame} of all clinical data available across
+#' experiments
+#' @slot sampleMap A \code{DataFrame} of translatable identifiers of samples
+#' and participants
+#' @slot metadata Additional data describing the
+#' \code{MultiAssayExperiment} object
+#' @slot drops A metadata \code{list} of dropped information
+#'
+#' @return A \code{MultiAssayExperiment} object
+#'
+#' @examples
+#' MultiAssayExperiment()
+#'
+#' @exportClass MultiAssayExperiment
+#' @include Elist-class.R
+setClass("MultiAssayExperiment",
+         slots = list(
+           Elist = "Elist",
+           pData = "DataFrame",
+           sampleMap = "DataFrame",
+           metadata = "ANY",
+           drops = "list"
+         )
+)
 
-## Experiment list must be the same length as the unique sampleMap assaynames
-.checkElist2 <- function(object) {
+### - - - - - - - - - - - - - - - - - - - - - - - -
+### Validity
+###
+
+## ELIST
+## 1.i. Elist length must be the same as the unique length of the
+## sampleMap "assayname" column.
+.checkElist <- function(object) {
   errors <- character()
   assaynames <- unique(sampleMap(object)[, "assayname"])
   if (length(Elist(object)) != length(assaynames)) {
     msg <- "Elist must be the same length as the sampleMap assaynames"
     errors <- c(errors, msg)
   }
-  if (!all(assaynames %in% names(object))) {
-    msg <- paste0("Experiment/Assay names in both the ",
-                  "Elist and the sampleMap must match")
+
+## 1.ii. Element names of the Elist should be found in the
+## sampleMap "assayname" column.
+  if (!all(names(Elist(object)) %in% assaynames)) {
+    msg <- "All Elist names were not found in the sampleMap assaynames"
     errors <- c(errors, msg)
   }
-  if (length(errors) == 0L) 
+  if (length(errors) == 0L)
     NULL else errors
 }
 
-## All sample names in the Elist must be in the sampleMap
+## 1.iii. For each Elist element, colnames must be found in the "assay" column
+## of the sampleMap
 .checkSampleNames <- function(object) {
-  if (!.uniqueSortIdentical(unname(unlist(colnames(object))),
-                            sampleMap(object)[, "assay"])) {
-    return("samples in the 'Elist' and 'sampleMap' are not equal")
+  sampMap <- sampleMap(object)
+  assayCols <- mapToList(sampMap[, c("assay", "assayname")])
+  colNams <- colnames(object)
+  logicResult <- mapply(function(columnNames, assayColumns) {
+    identical(sort(columnNames), sort(assayColumns))
+  }, columnNames = colNams,
+  assayColumns = assayCols)
+  if (!all(logicResult)) {
+    return("not all samples in the 'Elist' are found in the 'sampleMap'")
   }
   NULL
 }
 
-## All names must match between Elist and sampleMap
-.checkNames <- function(object) {
-  if (!all(
-    names(Elist(object)) %in% unique(sampleMap(object)[, "assayname"]))) {
-    return("Experiment names must match in both Elist and sampleMap")
+## PDATA
+## 2.i. See setClass above where pData = "DataFrame"
+
+## SAMPLEMAP
+## 3.i. all values in the sampleMap "primary" column must be found in the
+## rownames of pData
+.checkSampleMapNames <- function(object) {
+  errors <- character()
+  if (!(.allIn(
+    rownames(pData(object)),
+    sampleMap(object)[, "primary"]
+  ))) {
+    msg <- "All samples in the sampleMap must be in the pData"
+    errors <- c(errors, msg)
+  }
+  if (length(errors) == 0L)
+    NULL else errors
+}
+
+## 3.ii. Within rows of "sampleMap" corresponding to a single value in the 
+## "assayname" column, there can be no duplicated values in the "assay" column
+.uniqueNamesInAssays <- function(object) {
+  SampMap <- sampleMap(object)
+  lcheckdups <- mapToList(SampMap[, c("assay", "assayname")])
+  logchecks <- any(vapply(lcheckdups, FUN = function(x) {
+    as.logical(anyDuplicated(x))
+  }, FUN.VALUE = logical(1L)))
+  if (logchecks) {
+    return("All sample identifiers in the assays must be unique")
   }
   NULL
 }
 
 .validMultiAssayExperiment <- function(object) {
   if (length(Elist(object)) != 0L) {
-    c(.checkNames(object),
-      .checkElist2(object),
-      .checkSampleMapNames(object), 
+    c(.checkElist(object),
+      .checkSampleMapNames(object),
       .uniqueNamesInAssays(object),
       .checkSampleNames(object)
      )
@@ -126,7 +154,6 @@ setClass("MultiAssayExperiment",
 }
 
 S4Vectors::setValidity2("MultiAssayExperiment", .validMultiAssayExperiment)
-
 
 #' @exportMethod show
 #' @describeIn MultiAssayExperiment Show method for a
@@ -148,7 +175,7 @@ setMethod("show", "MultiAssayExperiment", function(object) {
       ifelse(o_len == 1L, "experiment", "experiments"),
       "with",
       ifelse(all(o_names == "none"), "no user-defined names",
-             ifelse(length(o_names) == 1L, "a user-defined name", 
+             ifelse(length(o_names) == 1L, "a user-defined name",
                     "user-defined names")),
       ifelse(length(o_len) == 0L, "or", "and"),
       ifelse(length(o_len) == 0L, "classes.",
@@ -157,12 +184,12 @@ setMethod("show", "MultiAssayExperiment", function(object) {
       "\n Containing an ")
   show(Elist(object))
   cat("To access slots use: \n Elist() - to obtain the",
-      sprintf('"%s"', c_elist), 
+      sprintf('"%s"', c_elist),
       "of experiment instances",
-      "\n pData() - for the phenotype", sprintf('"%s"', c_mp),
+      "\n pData() - for the primary/phenotype", sprintf('"%s"', c_mp),
       "\n sampleMap() - for the sample availability", sprintf('"%s"', c_sm),
       "\n metadata() - for the metadata object of 'ANY' class",
-      "\nSee also: subsetByAssay(), subsetByFeature(), subsetBySample()\n")
+      "\nSee also: subsetByAssay(), subsetByRow(), subsetByColumn()\n")
 })
 
 
@@ -178,26 +205,26 @@ setMethod("show", "MultiAssayExperiment", function(object) {
 #' @example inst/scripts/sampleMap-Ex.R
 setGeneric("sampleMap", function(x) standardGeneric("sampleMap"))
 
-#' @describeIn MultiAssayExperiment Access sampleMap slot from
+#' @describeIn MultiAssayExperiment Access sampleMap slot from a
 #' MultiAssayExperiment
 #' @exportMethod sampleMap
 setMethod("sampleMap", "MultiAssayExperiment", function(x)
   getElement(x, "sampleMap"))
 
-#' @describeIn MultiAssayExperiment Access Elist class from
+#' @describeIn MultiAssayExperiment Access Elist class from a
 #' MultiAssayExperiment
 #' @exportMethod Elist
 setMethod("Elist", "MultiAssayExperiment", function(x)
   getElement(x, "Elist"))
 
-#' @describeIn MultiAssayExperiment Access pData slot from
+#' @describeIn MultiAssayExperiment Access pData slot from a
 #' MultiAssayExperiment
 #' @exportMethod pData
 #' @importFrom Biobase pData
 setMethod("pData", "MultiAssayExperiment", function(object)
   getElement(object, "pData"))
 
-#' @describeIn MultiAssayExperiment Access metadata slot from
+#' @describeIn MultiAssayExperiment Access metadata slot from a
 #' MultiAssayExperiment
 #' @exportMethod metadata
 setMethod("metadata", "MultiAssayExperiment", function(x)
@@ -208,7 +235,7 @@ setMethod("metadata", "MultiAssayExperiment", function(x)
 ###
 
 #' @exportMethod length
-#' @describeIn MultiAssayExperiment Get the length of Elist 
+#' @describeIn MultiAssayExperiment Get the length of Elist
 setMethod("length", "MultiAssayExperiment", function(x)
   length(getElement(x, "Elist"))
 )
@@ -219,48 +246,70 @@ setMethod("names", "MultiAssayExperiment", function(x)
   names(getElement(x, "Elist"))
 )
 
+### - - - - - - - - - - - - - - - - - - - - - - - -
+### Replacers
+###
+
 #' Replace a slot value with a given \code{DataFrame}
-#' 
-#' @param x A \code{MultiAssayExperiment} object
+#'
+#' @param object A \code{MultiAssayExperiment} object
 #' @param value A \code{DataFrame} object to replace the existing
 #' \code{sampleMap}
+#'
+#' @examples
+#' ## Load example
+#' example("MultiAssayExperiment")
+#'
+#' ## Replacement method for a MultiAssayExperiment sampleMap
+#' sampleMap(myMultiAssayExperiment) <- DataFrame()
+#'
 #' @return A \code{sampleMap} with replacement values
-setGeneric("sampleMap<-", function(x, value) standardGeneric("sampleMap<-"))
+setGeneric("sampleMap<-", function(object, value) {
+  standardGeneric("sampleMap<-")
+})
 
 #' @exportMethod sampleMap<-
 #' @describeIn MultiAssayExperiment value: A \code{DataFrame} sampleMap
 #' representation
 #' @param value A \code{DataFrame} or \code{Elist} object to replace the
-#' existing
-#' \code{sampleMap} or an \code{Elist} slot, respectively
+#' existing \code{sampleMap}, \code{Elist}, or \code{pData} slot
 setReplaceMethod("sampleMap", c("MultiAssayExperiment", "DataFrame"),
-                 function(x, value) {
-                   slot(x, "sampleMap") <- value
-                   return(x)
+                 function(object, value) {
+                   slot(object, "sampleMap") <- value
+                   return(object)
                  })
 
 #' Replace an \code{Elist} slot value with a given \code{Elist}
 #' class object
 #'
-#' @param x A \code{MultiAssayExperiment} class object
+#' @param object A \code{MultiAssayExperiment} class object
 #' @param value An \code{Elist} object to replace the existing
 #' \code{Elist} slot
 #'
 #' @examples
 #' ## Load a MultiAssayExperiment
 #' example("MultiAssayExperiment")
-#' 
+#'
 #' ## Replace with an empty Elist
 #' Elist(myMultiAssayExperiment) <- Elist()
 #'
 #' @return A \code{Elist} class object
-setGeneric("Elist<-", function(x, value) standardGeneric("Elist<-"))
+setGeneric("Elist<-", function(object, value) standardGeneric("Elist<-"))
 
 #' @exportMethod Elist<-
-#' @describeIn MultiAssayExperiment value: An \code{Elist} 
+#' @describeIn MultiAssayExperiment value: An \code{Elist}
 #' representation
 setReplaceMethod("Elist", c("MultiAssayExperiment", "Elist"),
-                 function(x, value) {
-                   slot(x, "Elist") <- value
-                   return(x)
+                 function(object, value) {
+                   slot(object, "Elist") <- value
+                   return(object)
                  })
+
+#' @exportMethod pData<-
+#' @describeIn MultiAssayExperiment value: A \code{DataFrame} of specimen data
+#' @importFrom Biobase pData<-
+setReplaceMethod("pData", c("MultiAssayExperiment", "DataFrame"),
+                 function(object, value) {
+                   slot(object, "pData") <- value
+                   return(object)
+                   })

@@ -12,7 +12,7 @@ MultiAssayExperiment(Elist = list(), pData = S4Vectors::DataFrame(),
 \arguments{
 \item{Elist}{A \code{list} of all combined experiments}
 
-\item{pData}{A \code{\link[S4Vectors]{DataFrame-class}} of the phenotype
+\item{pData}{A \code{\link[S4Vectors]{DataFrame}} of the phenotype
 data for all participants}
 
 \item{sampleMap}{A \code{DataFrame} of sample identifiers, assay samples,
@@ -57,13 +57,13 @@ names(ExpList)[3] <- "CNVgistic"
 example("sampleMap")
 
 ## Create an example phenotype data
-myPheno <- data.frame(sex = c("M", "F", "M", "F"),
+primary <- data.frame(sex = c("M", "F", "M", "F"),
                        age = 38:41,
                        row.names = c("Jack", "Jill", "Bob", "Barbara"))
 
-## Auto-creation of map
+## Create a MultiAssayExperiment instance
 myMultiAssayExperiment <- MultiAssayExperiment(Elist = ExpList,
-                                               pData = myPheno,
+                                               pData = primary,
                                                sampleMap = mySampleMap)
 }
 \seealso{

@@ -19,10 +19,23 @@
 #' @example inst/scripts/RangedRaggedAssay-Ex.R
 #' @export RangedRaggedAssay
 RangedRaggedAssay <- function(x = GRangesList()) {
-  if(inherits(x, "GRanges")) {
+  if (inherits(x, "GRanges")) {
     x <- GRangesList(x)
   }
-  .RangedRaggedAssay(x)
+  if (inherits(x, "GRangesList")) {
+    metad <- mcols(x)
+    missingRownames <- vapply(X = x, FUN = function(grl) {
+      is.null(names(grl))
+    }, FUN.VALUE = logical(1L))
+    if (all(missingRownames)) {
+      u_obj <- unlist(x, use.names = FALSE)
+      names(u_obj) <- seq_len(length(u_obj))
+      x <- relist(u_obj, x)
+    }
+  }
+  newRRA <- .RangedRaggedAssay(x)
+  mcols(newRRA) <- metad
+  return(newRRA)
 }
 
 
@@ -55,7 +68,10 @@ RangedRaggedAssay <- function(x = GRangesList()) {
   }
   if (!missing(i)) {
     if (is.character(i)) {
-      x <- x[relist(names(unlist(x, use.names = FALSE)) %in% i, x)]
+      cLL <- relist(names(unlist(x, use.names = FALSE)) %in% i, x)
+      x <- callNextMethod(x = x, i = cLL)
+    } else if (is.numeric(i) || is.logical(i)) {
+      x <- endoapply(x, function(unit) { unit[i, ] })
     } else {
       x <- callNextMethod(x = x, i = i)
     }
@@ -82,6 +98,7 @@ RangedRaggedAssay <- function(x = GRangesList()) {
 #' \code{chracter}, \code{numeric}, or \code{logical}
 setMethod("[", c("RangedRaggedAssay", "ANY", "ANY"),
           .sBracketSubsetRRA)
+
 #' @describeIn RangedRaggedAssay Subset a \code{RangedRaggedAssay} using a
 #' \code{GRanges} class object
 setMethod("[", c("RangedRaggedAssay", "GRanges", "ANY"),
@@ -94,10 +111,30 @@ setMethod("dim", "RangedRaggedAssay", function(x)
 
 #' @describeIn RangedRaggedAssay Get the column length of a
 #' \code{RangedRaggedAssay} class object
-setMethod("ncol", signature("RangedRaggedAssay"), function(x)
+setMethod("ncol", "RangedRaggedAssay", function(x)
   dim(x)[2])
 
 #' @describeIn RangedRaggedAssay Get the row length of a
 #' \code{RangedRaggedAssay} class object
-setMethod("nrow", signature("RangedRaggedAssay"), function(x)
+setMethod("nrow", "RangedRaggedAssay", function(x)
   dim(x)[1])
+
+#' @describeIn RangedRaggedAssay Get feature names from a
+#' \code{RangedRaggedAssay}
+setMethod("rownames", "RangedRaggedAssay", function(x)
+  names(unlist(x, use.names = FALSE)))
+
+#' @describeIn RangedRaggedAssay Get sample names from a
+#' \code{RangedRaggedAssay}
+setMethod("colnames", "RangedRaggedAssay", function(x)
+  base::names(x))
+
+#' @exportMethod colnames<-
+#' @describeIn RangedRaggedAssay value: A modified \code{RangedRaggedAssay}
+#' object
+#' @param value A \code{character} vector representing column or sample names
+setReplaceMethod("colnames", c("RangedRaggedAssay", "character"),
+                 function(x, value) {
+                   names(x) <- value
+                   return(x)
+                 })
